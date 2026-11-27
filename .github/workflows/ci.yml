@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
@@ -8,4 +10,64 @@ permissions: {}
 
 jobs:
   pr-title:
+    if: github.event_name == 'pull_request'
     uses: ./.github/workflows/pr-title.yml
+
+  release-dry-run:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+
+      - name: Install release tooling
+        run: npm ci --ignore-scripts
+
+      - name: Check release notes render
+        run: node scripts/check-release-notes.mjs
+
+      - name: Check out PR branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: git checkout -B "$HEAD_REF"
+
+      - name: Release dry run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
+        # Presents the PR branch as a push so semantic-release runs the full analysis.
+        run: env GITHUB_EVENT_NAME=push GITHUB_REF="refs/heads/$HEAD_REF" npx semantic-release --dry-run --branches "$HEAD_REF"
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+
+      - name: Install release tooling
+        run: npm ci --ignore-scripts
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
