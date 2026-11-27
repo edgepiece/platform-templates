@@ -1,0 +1,24 @@
+name: PR title (reusable)
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate conventional commit format
+        # Title is passed through the environment, not interpolated into the script.
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|perf|docs|style|refactor|test|chore|ci|build|revert)(\([a-z0-9-]+\))?!?: .+'
+          if [[ "$TITLE" =~ $pattern ]]; then
+            echo "OK: $TITLE"
+          else
+            echo "PR title must match: type(scope)!: description"
+            echo "Got: $TITLE"
+            exit 1
+          fi
