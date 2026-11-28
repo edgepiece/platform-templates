@@ -29,7 +29,7 @@ Shared CI/CD templates for Edgepiece repositories. Product repositories call the
 
 ## Calling a template
 
-Pin to the commit SHA of a release, with the tag as a comment. Branch names and floating tags are not used.
+Pin to an exact release tag. Branch names and floating tags such as `v1` are not used.
 
 ```yaml
 name: PR title
@@ -42,7 +42,7 @@ permissions: {}
 
 jobs:
   pr-title:
-    uses: edgepiece/platform-templates/.github/workflows/pr-title.yml@<commit-sha> # vX.Y.Z
+    uses: edgepiece/platform-templates/.github/workflows/pr-title.yml@vX.Y.Z
 ```
 
 The status check is named `<caller job> / <template job>`, here `pr-title / check`. Required checks in the consumer's ruleset use that name.
@@ -55,7 +55,16 @@ A template cannot have more permissions than the calling job grants.
 - One version covers the whole repository.
 - A change that consumers use is titled `feat:` or `fix:`. Other types do not produce a release.
 - A breaking change is marked with `!` in the title. While the version is 0.x it raises the minor version.
-- Consumers upgrade by changing the pinned SHA.
+- Consumers upgrade by changing the pinned tag.
+
+## Tag protection
+
+Pinning by tag relies on published versions not moving:
+
+- The `protect-release-tags` ruleset blocks moving and deleting `v*` tags, with no bypass.
+- Immutable releases lock the tag of each release published since the setting was enabled.
+
+This applies to this repository's templates only. Actions from outside the organisation are pinned by commit SHA.
 
 ## Changing a template
 
